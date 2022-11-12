@@ -4,6 +4,34 @@
 #include <ESP8266WiFi.h>
 #include "./DNSServer.h"                  // Patched lib
 #include <ESP8266WebServer.h>
+#include <EEPROM.h>
+
+struct TimeVar {
+  byte hour;
+  byte minute;
+  byte second;
+  bool operator == (const TimeVar& t)
+  {
+    return (hour == t.hour && minute == t.minute && second == t.second);
+  }
+  bool operator != (const TimeVar& t)
+  {
+    return (hour != t.hour || minute != t.minute || second != t.second);
+  }
+};
+
+  int i=0;
+  int count=0;
+int countit=0;
+int activated=1;
+bool pin3,pin4,pin5,pin6;
+int temperature;
+
+TimeVar remainingTime;
+const TimeVar defaultTime = {0, 10, 30};  // program default time is 00:10:30 , zero hours, ten minutes and thirty seconds
+unsigned long startTime = 0;
+bool updated = false;
+
     #include <DHT.h>
     #define DHTPIN 4     // Digital pin connected to the DHT sensor
      
@@ -131,6 +159,7 @@ String posted() {
 void setup() {
   Serial.begin(115200); 
   emit("setup"); 
+   pinMode(5, OUTPUT); 
   bootTime = lastActivity = millis();
   pinMode(ACTIVITY_LED, OUTPUT); led(1);
   WiFi.mode(WIFI_AP);
@@ -194,6 +223,70 @@ void loop() {
           Serial.println(h);
         }
       }
+
+
+  
+if ( count > 10 ){
+
+  //if time = 0:00 then get eeprom time
+  TimeVar storedTime;
+  EEPROM.get(0, storedTime);
+  if (storedTime != defaultTime)
+  {
+    remainingTime = storedTime;
+  }
+  else
+  {
+    remainingTime = defaultTime;
+  }
+  Serial.print("Countdown Time:");
+  char buffer[15] = "";
+  snprintf(buffer, sizeof(buffer), "%2d:%2d:%2d, ", remainingTime.hour, remainingTime.minute, remainingTime.second);
+  Serial.print(buffer);
+  Serial.println(remainingTime == defaultTime? "the default time." : "the stored time");
+
+count=0;
+}else{
+count++;
+}
+// loop for input too to get faster timing.
+
+    if ( activated == 0 ) {
+//      for( int i = 3; i < 7; i++ ){
+//     // i=1;
+//      if( pe.digitalRead(i) == 1 ){
+//        Serial.print("activated keypad \n" );
+//                activated=1;
+//        }
+//
+//      }
+//    }
+//      
+
+   //active loop update eeprom
+  if(millis() -  startTime > 20000UL && !updated)
+  {
+    TimeVar newTime = {1,20,30};
+    EEPROM.put(0,newTime);
+    Serial.println("stored time updated");
+    updated = true;
+  }
+      countit++;
+    delay(10); 
+     
+  }  else{   delay(1060); //sleep loop update eeprom
+    
+    if(millis() -  startTime > 20000UL && !updated)
+    {
+      TimeVar newTime = {1,20,30};
+      EEPROM.put(0,newTime);
+      Serial.println("stored time updated");
+      updated = true;
+    }
+  
+  }
+
+      
         delay(200);
         
          }
